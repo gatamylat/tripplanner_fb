@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Trip Planner">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#f2f2f7">
+<title>Trip Planner</title>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✈️</text></svg>">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{--bg:#f2f2f7;--card:#fff;--text:#1d1d1f;--text2:#8e8e93;--text3:#aeaeb2;--border:#e5e5ea;--accent:#007aff;--accent-light:#e3f2fd;--success:#34c759;--warning:#ff9500;--danger:#ff3b30;--safe-top:env(safe-area-inset-top);--safe-bottom:env(safe-area-inset-bottom)}
+body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding-top:var(--safe-top);padding-bottom:var(--safe-bottom);overflow-x:hidden}
+.login-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:40px 20px;text-align:center;background:linear-gradient(180deg,#e8f4fd 0%,var(--bg) 100%)}
+.login-screen h1{font-size:32px;font-weight:700;margin-bottom:8px}
+.login-screen p{color:var(--text2);font-size:16px;margin-bottom:32px;max-width:320px}
+.login-card{background:var(--card);border-radius:16px;padding:28px 24px;width:100%;max-width:380px;box-shadow:0 4px 20px rgba(0,0,0,0.08)}
+.pin-dots{display:flex;gap:12px;justify-content:center;margin:24px 0}
+.pin-dot{width:14px;height:14px;border-radius:50%;border:2px solid var(--border);transition:all 0.2s}
+.pin-dot.filled{background:var(--accent);border-color:var(--accent)}
+.pin-dot.error{background:var(--danger);border-color:var(--danger);animation:shake 0.4s}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+.pin-pad{display:grid;grid-template-columns:repeat(3,72px);gap:12px;justify-content:center;margin-top:20px}
+.pin-key{width:72px;height:56px;border-radius:12px;border:none;background:var(--bg);font-size:24px;font-weight:500;cursor:pointer;font-family:inherit;transition:all 0.15s;display:flex;align-items:center;justify-content:center;color:var(--text)}
+.pin-key:active{background:var(--accent-light);transform:scale(0.95)}
+.pin-key.empty{background:transparent;cursor:default}
+.pin-key.del{font-size:18px;color:var(--text2)}
+.login-tabs{display:flex;gap:4px;background:var(--bg);border-radius:10px;padding:3px;margin-bottom:24px}
+.login-tab{flex:1;padding:10px;border:none;background:transparent;font-size:14px;font-weight:500;border-radius:8px;cursor:pointer;font-family:inherit;color:var(--text2);transition:all 0.2s}
+.login-tab.active{background:var(--card);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,0.08)}
+.login-panel{display:none}.login-panel.active{display:block}
+.login-users-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px}
+.login-user-btn{padding:16px 12px;border:2px solid var(--border);border-radius:14px;background:var(--card);cursor:pointer;text-align:center;transition:all 0.2s;font-family:inherit}
+.login-user-btn:active{transform:scale(0.97)}
+.login-user-btn.selected{border-color:var(--accent);background:var(--accent-light)}
+.login-user-emoji{font-size:32px;display:block;margin-bottom:6px}
+.login-user-name{font-size:14px;font-weight:600;color:var(--text)}
+.login-btn{width:100%;padding:14px;border:none;background:var(--accent);color:#fff;font-size:17px;font-weight:600;border-radius:12px;cursor:pointer;font-family:inherit;transition:all 0.15s}
+.login-btn:active{opacity:0.8;transform:scale(0.98)}.login-btn:disabled{opacity:0.5}
+.room-code-display{font-family:'Courier New',monospace;font-size:28px;font-weight:700;letter-spacing:0.15em;color:var(--accent);background:var(--accent-light);padding:14px 20px;border-radius:12px;margin:12px 0;text-align:center;user-select:all}
+.header{background:rgba(242,242,247,0.85);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);padding:10px 16px;position:sticky;top:0;z-index:100;border-bottom:0.5px solid var(--border);display:flex;align-items:center;justify-content:space-between;min-height:44px}
+.header-back{font-size:17px;color:var(--accent);background:none;border:none;cursor:pointer;display:flex;align-items:center;gap:4px;padding:8px 0}.header-back:active{opacity:0.5}
+.header-center{position:absolute;left:50%;transform:translateX(-50%);text-align:center}
+.header-title{font-size:17px;font-weight:600}
+.header-subtitle{font-size:11px;color:var(--text2);display:flex;align-items:center;justify-content:center;gap:4px}
+.status-dot{width:6px;height:6px;border-radius:50%;display:inline-block}
+.status-dot.online{background:var(--success)}.status-dot.offline{background:var(--danger)}.status-dot.syncing{background:var(--warning);animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+.header-action{font-size:17px;color:var(--accent);background:none;border:none;cursor:pointer;padding:8px 0}.header-action:active{opacity:0.5}
+.users-bar{display:flex;gap:8px;padding:8px 16px;background:var(--card);border-bottom:0.5px solid var(--border);overflow-x:auto;-webkit-overflow-scrolling:touch}
+.users-bar::-webkit-scrollbar{display:none}
+.user-badge{display:inline-flex;align-items:center;gap:5px;padding:5px 12px;background:var(--accent-light);border-radius:16px;font-size:12px;font-weight:500;color:var(--accent);white-space:nowrap;flex-shrink:0}
+.user-badge .dot{width:5px;height:5px;border-radius:50%;background:var(--success)}
+.user-badge.me{background:var(--accent);color:#fff}.user-badge.me .dot{background:#fff}
+.content{padding:16px;padding-bottom:100px}
+.section-subheader{font-size:13px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;margin:20px 0 8px 4px}
+.trip-card{background:var(--card);border-radius:12px;overflow:hidden;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,0.04);cursor:pointer;transition:transform 0.15s}
+.trip-card:active{transform:scale(0.98)}
+.trip-card-image{width:100%;height:140px;display:flex;align-items:center;justify-content:center;font-size:48px}
+.trip-card-image img{width:100%;height:100%;object-fit:cover}
+.trip-card-content{padding:12px 14px}
+.trip-card-title{font-size:17px;font-weight:600;margin-bottom:4px}
+.trip-card-dates{font-size:14px;color:var(--text2)}
+.trip-card-meta{display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap}
+.trip-card-status{display:inline-block;font-size:11px;font-weight:600;padding:3px 8px;border-radius:10px}
+.trip-card-status.upcoming{background:var(--accent-light);color:var(--accent)}
+.trip-card-status.current{background:#e8f5e9;color:#34c759}
+.trip-card-status.past{background:#f0f0f5;color:var(--text2)}
+.trip-card-author{font-size:11px;color:var(--text3)}
+.trip-card-participants{font-size:11px;color:var(--text2)}
+.list{background:var(--card);border-radius:12px;overflow:hidden}
+.list-item{display:flex;align-items:center;padding:12px 14px;border-bottom:0.5px solid var(--border);cursor:pointer;transition:background 0.15s}
+.list-item:last-child{border-bottom:none}.list-item:active{background:var(--bg)}
+.list-item-icon{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;margin-right:12px;flex-shrink:0}
+.list-item-icon.map{background:#e8f5e9}.list-item-icon.instagram{background:#fce4ec}.list-item-icon.web{background:#e3f2fd}.list-item-icon.note{background:#f3e5f5}
+.list-item-content{flex:1;min-width:0}
+.list-item-title{font-size:16px;font-weight:400;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.list-item-subtitle{font-size:13px;color:var(--text2);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.list-item-arrow{color:var(--text3);font-size:14px;margin-left:8px}
+.day-header{display:flex;align-items:center;padding:12px 4px;margin-top:16px}
+.day-date{width:44px;height:44px;background:var(--accent);color:#fff;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;margin-right:12px}
+.day-date-num{font-size:18px;font-weight:700;line-height:1}.day-date-month{font-size:10px;font-weight:500;text-transform:uppercase}
+.day-title{font-size:17px;font-weight:600}.day-weekday{font-size:13px;color:var(--text2)}
+.event-item{display:flex;align-items:flex-start;padding:12px 14px;border-bottom:0.5px solid var(--border);cursor:pointer}
+.event-item:last-child{border-bottom:none}.event-item:active{background:var(--bg)}
+.event-time{width:50px;font-size:14px;font-weight:500;color:var(--accent);flex-shrink:0}
+.event-content{flex:1}.event-title{font-size:16px}.event-note{font-size:13px;color:var(--text2);margin-top:2px}.event-author{font-size:11px;color:var(--text3);margin-top:4px}
+.tab-bar{display:flex;background:var(--card);border-bottom:0.5px solid var(--border);overflow-x:auto;-webkit-overflow-scrolling:touch}
+.tab-bar::-webkit-scrollbar{display:none}
+.tab-item{flex-shrink:0;padding:12px 16px;font-size:14px;font-weight:500;color:var(--text2);border:none;background:none;cursor:pointer;position:relative;font-family:inherit}
+.tab-item.active{color:var(--accent)}
+.tab-item.active::after{content:'';position:absolute;bottom:0;left:16px;right:16px;height:2px;background:var(--accent);border-radius:1px}
+.fab-container{position:fixed;bottom:calc(24px + var(--safe-bottom));right:20px;z-index:200}
+.fab{width:56px;height:56px;border-radius:50%;background:var(--accent);color:#fff;border:none;font-size:28px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(0,122,255,0.4);transition:transform 0.3s;font-family:inherit}
+.fab:active{transform:scale(0.95)}.fab.open{transform:rotate(45deg)}
+.fab-menu{position:absolute;bottom:70px;right:0;display:flex;flex-direction:column;gap:12px;opacity:0;pointer-events:none;transform:translateY(20px);transition:all 0.3s ease}
+.fab-menu.open{opacity:1;pointer-events:auto;transform:translateY(0)}
+.fab-item{display:flex;align-items:center;justify-content:flex-end;gap:10px}
+.fab-item-label{background:var(--card);padding:8px 12px;border-radius:8px;font-size:14px;font-weight:500;box-shadow:0 2px 8px rgba(0,0,0,0.1);white-space:nowrap}
+.fab-item-btn{width:44px;height:44px;border-radius:50%;background:var(--card);border:none;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.12);font-family:inherit}
+.fab-item-btn:active{transform:scale(0.95)}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.4);display:none;align-items:flex-end;justify-content:center;z-index:1000}
+.modal-overlay.active{display:flex}
+.modal{background:var(--card);border-radius:14px 14px 0 0;width:100%;max-height:90vh;overflow-y:auto;animation:slideUp 0.3s ease}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.modal-handle{width:36px;height:5px;background:var(--border);border-radius:3px;margin:8px auto}
+.modal-header{padding:12px 16px;border-bottom:0.5px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.modal-title{font-size:17px;font-weight:600}
+.modal-close{font-size:17px;color:var(--accent);background:none;border:none;cursor:pointer;font-family:inherit}
+.modal-body{padding:16px;padding-bottom:calc(16px + var(--safe-bottom))}
+.form-group{margin-bottom:16px}
+.form-label{display:block;font-size:13px;font-weight:500;color:var(--text2);margin-bottom:6px;padding-left:4px}
+.input{width:100%;padding:12px 14px;border:none;border-radius:10px;font-size:16px;background:var(--bg);color:var(--text);font-family:inherit}
+.input:focus{outline:none;box-shadow:0 0 0 3px rgba(0,122,255,0.2)}
+.input::placeholder{color:var(--text3)}textarea.input{resize:vertical;min-height:80px}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;padding:14px 20px;border:none;border-radius:12px;font-size:17px;font-weight:600;cursor:pointer;transition:all 0.15s;width:100%;font-family:inherit}
+.btn-primary{background:var(--accent);color:#fff}.btn-primary:active{opacity:0.8}
+.btn-secondary{background:var(--bg);color:var(--text)}.btn-danger{background:var(--danger);color:#fff}
+.cover-picker{width:100%;height:180px;border-radius:12px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;margin-bottom:16px;position:relative}
+.cover-picker img{width:100%;height:100%;object-fit:cover}
+.cover-picker-text{color:#fff;font-size:15px;font-weight:500}.cover-picker-icon{font-size:32px;margin-bottom:8px}
+.cover-picker-overlay{position:absolute;inset:0;background:rgba(0,0,0,0.3);display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;opacity:0;transition:opacity 0.2s}
+.cover-picker:active .cover-picker-overlay{opacity:1}
+.photo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;margin-top:12px}
+.photo-item{aspect-ratio:1;background:var(--bg);overflow:hidden;cursor:pointer}
+.photo-item img{width:100%;height:100%;object-fit:cover}
+.photo-picker{width:100%;height:120px;border-radius:12px;background:var(--bg);display:flex;align-items:center;justify-content:center;cursor:pointer;border:2px dashed var(--border);overflow:hidden}
+.photo-picker:active{opacity:0.7}
+.description-block{background:var(--card);border-radius:12px;padding:14px;margin-bottom:12px}
+.description-text{font-size:15px;line-height:1.5;white-space:pre-wrap}
+.toast{position:fixed;top:calc(60px + var(--safe-top));left:50%;transform:translateX(-50%) translateY(-100px);background:var(--text);color:#fff;padding:12px 20px;border-radius:10px;font-size:14px;font-weight:500;z-index:2000;transition:transform 0.3s ease;max-width:90%;text-align:center}
+.toast.show{transform:translateX(-50%) translateY(0)}.toast.success{background:var(--success)}.toast.error{background:var(--danger)}
+.empty-state{text-align:center;padding:60px 20px}
+.empty-icon{font-size:56px;margin-bottom:16px}.empty-title{font-size:20px;font-weight:600;margin-bottom:8px}.empty-text{font-size:15px;color:var(--text2)}
+.hidden{display:none!important}.mb-16{margin-bottom:16px}
+.chip-group{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:20px;font-size:14px;font-weight:500;border:2px solid var(--border);background:var(--card);cursor:pointer;transition:all 0.2s;font-family:inherit}
+.chip.selected{border-color:var(--accent);background:var(--accent-light);color:var(--accent)}
+.chip:active{transform:scale(0.95)}
+@media(min-width:600px){.modal{max-width:500px;border-radius:14px;margin:auto}}
+</style>
+</head>
+<body>
+
+<!-- ЭКРАН 1: PIN-КОД -->
+<div id="pinScreen" class="login-screen">
+<h1>✈️ Trip Planner</h1>
+<p>Введите PIN-код для входа</p>
+<div class="login-card">
+<div class="pin-dots" id="pinDots">
+<div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div>
+</div>
+<div class="pin-pad">
+<button class="pin-key" onclick="pinKey(1)">1</button>
+<button class="pin-key" onclick="pinKey(2)">2</button>
+<button class="pin-key" onclick="pinKey(3)">3</button>
+<button class="pin-key" onclick="pinKey(4)">4</button>
+<button class="pin-key" onclick="pinKey(5)">5</button>
+<button class="pin-key" onclick="pinKey(6)">6</button>
+<button class="pin-key" onclick="pinKey(7)">7</button>
+<button class="pin-key" onclick="pinKey(8)">8</button>
+<button class="pin-key" onclick="pinKey(9)">9</button>
+<button class="pin-key empty"></button>
+<button class="pin-key" onclick="pinKey(0)">0</button>
+<button class="pin-key del" onclick="pinDel()">⌫</button>
+</div>
+</div>
+</div>
+
+<!-- ЭКРАН 2: ВЫБОР ПОЛЬЗОВАТЕЛЯ -->
+<div id="loginScreen" class="login-screen hidden">
+<h1>✈️ Кто путешествует?</h1>
+<p>Выберите своё имя</p>
+<div class="login-card">
+<div class="login-users-grid">
+<button class="login-user-btn" onclick="selectUser(this,'Костя')"><span class="login-user-emoji">👨‍💻</span><span class="login-user-name">Костя</span></button>
+<button class="login-user-btn" onclick="selectUser(this,'Аня')"><span class="login-user-emoji">👩‍🦰</span><span class="login-user-name">Аня</span></button>
+<button class="login-user-btn" onclick="selectUser(this,'Ксюша')"><span class="login-user-emoji">👩</span><span class="login-user-name">Ксюша</span></button>
+<button class="login-user-btn" onclick="selectUser(this,'Иван')"><span class="login-user-emoji">👨</span><span class="login-user-name">Иван</span></button>
+</div>
+<button class="login-btn" id="loginBtn" onclick="loginFamily()" disabled>Войти</button>
+</div>
+</div>
+
+<!-- ЭКРАН 3: ПРИЛОЖЕНИЕ -->
+<div id="appScreen" class="hidden">
+<header class="header">
+<button class="header-back hidden" id="headerBack" onclick="App.goBack()">‹ Назад</button>
+<div class="header-center"><div class="header-title" id="headerTitle">Поездки</div>
+<div class="header-subtitle"><span class="status-dot" id="statusDot"></span><span id="statusText">Подключение...</span></div></div>
+<button class="header-action hidden" id="headerAction"></button>
+</header>
+<div class="users-bar hidden" id="usersBar"></div>
+<main class="content" id="mainContent"></main>
+<div class="fab-container" id="fabContainer"><div class="fab-menu" id="fabMenu"></div>
+<button class="fab" id="fabBtn" onclick="App.toggleFab()">+</button></div>
+</div>
+<div class="modal-overlay" id="modalOverlay"><div class="modal" id="modalContent"><div class="modal-handle"></div></div></div>
+<div class="toast" id="toast"></div>
+<script>
+
+// ═══ TRIP PLANNER v3 — Firebase Multi-user ═══
+// Участники: Костя, Аня, Ксюша, Иван
+
+// --- GLOBALS (Ошибка 1: всё объявлено ДО функций) ---
+let fbDb=null,fbAuth=null,fbUser=null,fbEnabled=false,fbSyncInProgress=false,fbUnsubscribe=null;
+let userName='',roomCode='',userId='';
+let appData={trips:[],events:[],links:[],notes:[],photos:[]};
+let currentView='trips',currentTripId=null,currentTab='schedule',fabOpen=false;
+let pinValue='';
+
+const APP_NAME='trip-planner';
+const ROOM_CODE='family1';
+const PIN_HASH='1785'; // PIN: 1785 — Костя может поменять
+const FAMILY=['Костя','Аня','Ксюша','Иван'];
+const FAMILY_EMOJI={'Костя':'👨‍💻','Аня':'👩‍🦰','Ксюша':'👩','Иван':'👨'};
+
+// Firebase config (Ошибка 2: ключ из консоли, проверен)
+const FB_CONFIG={apiKey:"AIzaSyAgIA0PLvUOJsRN8tHRzC03evTTkt3KHHc",authDomain:"skills-tracker-3f21b.firebaseapp.com",projectId:"skills-tracker-3f21b",storageBucket:"skills-tracker-3f21b.firebasestorage.app",messagingSenderId:"108202530564",appId:"1:108202530564:web:31ecf70071f49a89abe251"};
+
+const $=id=>document.getElementById(id);
+
+// ═══ UTILS ═══
+function gid(){return Date.now().toString(36)+Math.random().toString(36).substr(2)}
+function hash(s){let h=0;for(let i=0;i<s.length;i++){h=((h<<5)-h)+s.charCodeAt(i);h=h&h}return Math.abs(h).toString(36)}
+function fmtDate(d){if(!d)return'';return new Date(d).toLocaleDateString('ru-RU',{day:'numeric',month:'long',year:'numeric'})}
+function fmtDT(d){if(!d)return'';return new Date(d).toLocaleDateString('ru-RU',{day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'})}
+function fmtRange(s,e){if(!s||!e)return'';const a=new Date(s),b=new Date(e);const sm=a.toLocaleDateString('ru-RU',{month:'short'}),em=b.toLocaleDateString('ru-RU',{month:'short'});if(a.getMonth()===b.getMonth()&&a.getFullYear()===b.getFullYear())return`${a.getDate()} \u2013 ${b.getDate()} ${sm} ${a.getFullYear()}`;return`${a.getDate()} ${sm} \u2013 ${b.getDate()} ${em} ${a.getFullYear()}`}
+function monShort(m){return['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'][m]}
+function weekday(d){return['Воскресенье','Понедельник','Вторник','Среда','Четверг','Пятница','Суббота'][d.getDay()]}
+function domain(u){try{return new URL(u).hostname}catch(e){return u}}
+function tripEmoji(t){const l=t.toLowerCase();const m={'пляж':'🏖️','море':'🏖️','гор':'🏔️','париж':'🗼','рим':'🏛️','итал':'🏛️','лондон':'🎡','токио':'🗾','япон':'🗾','стамбул':'🕌','турц':'🕌','тайланд':'🌴','бали':'🌴','египет':'🐪','круиз':'🚢','лыж':'⛷️','дубай':'🏙️','грец':'🏛️','испан':'🇪🇸','карел':'🌲','сочи':'🌊','питер':'🏰','петерб':'🏰','москв':'🏰'};for(const[k,v]of Object.entries(m))if(l.includes(k))return v;return'✈️'}
+async function toB64(f){return new Promise((r,j)=>{const rd=new FileReader();rd.onload=()=>r(rd.result);rd.onerror=j;rd.readAsDataURL(f)})}
+
+// ═══ PIN SCREEN ═══
+function pinKey(n){if(pinValue.length>=4)return;pinValue+=n;updatePinDots();if(pinValue.length===4){if(pinValue===PIN_HASH){localStorage.setItem(APP_NAME+'_pin','ok');showLoginScreen()}else{document.querySelectorAll('.pin-dot').forEach(d=>d.classList.add('error'));setTimeout(()=>{pinValue='';updatePinDots();document.querySelectorAll('.pin-dot').forEach(d=>d.classList.remove('error'))},600)}}}
+function pinDel(){if(pinValue.length>0){pinValue=pinValue.slice(0,-1);updatePinDots()}}
+function updatePinDots(){document.querySelectorAll('.pin-dot').forEach((d,i)=>{d.classList.toggle('filled',i<pinValue.length)})}
+function showLoginScreen(){$('pinScreen').classList.add('hidden');$('loginScreen').classList.remove('hidden')}
+
+// ═══ LOGIN ═══
+function selectUser(btn,name){document.querySelectorAll('.login-user-btn').forEach(b=>b.classList.remove('selected'));btn.classList.add('selected');userName=name;$('loginBtn').disabled=false}
+function loginFamily(){if(!userName)return;roomCode=ROOM_CODE;userId='f_'+hash(userName);localStorage.setItem(APP_NAME+'_user',userName);localStorage.setItem(APP_NAME+'_room',roomCode);$('loginScreen').classList.add('hidden');$('appScreen').classList.remove('hidden');loadLocal();renderTrips();initFB();console.log('🚀',APP_NAME,'|',userName,'| room:',roomCode)}
+function tryAuto(){const pin=localStorage.getItem(APP_NAME+'_pin');const u=localStorage.getItem(APP_NAME+'_user');const r=localStorage.getItem(APP_NAME+'_room');if(pin==='ok'&&u&&r){userName=u;roomCode=r;userId='f_'+hash(userName);$('pinScreen').classList.add('hidden');$('appScreen').classList.remove('hidden');loadLocal();renderTrips();initFB();return true}if(pin==='ok'){$('pinScreen').classList.add('hidden');$('loginScreen').classList.remove('hidden')}return false}
+
+// ═══ FIREBASE (Ошибки 1-4,8,10,11 учтены) ═══
+function initFB(){try{firebase.initializeApp(FB_CONFIG);fbDb=firebase.firestore();fbAuth=firebase.auth();fbAuth.signInAnonymously().then(r=>{fbUser=r.user;fbEnabled=true;setSt('online','Подключено');loadFB()}).catch(e=>{fbEnabled=false;setSt('offline','Офлайн: '+(e.code||''))})}catch(e){fbEnabled=false;setSt('offline','Ошибка')}}
+
+// Путь: /apps/trip-planner/rooms/{roomCode} (Ошибка 3: совпадает с rules)
+function docRef(){return fbDb.collection('apps').doc(APP_NAME).collection('rooms').doc(roomCode)}
+
+async function saveFB(){if(!fbEnabled||fbSyncInProgress)return;
+// Ошибка 11: не сохраняем пустые данные
+const has=Object.values(appData).some(a=>a&&a.length>0);if(!has){console.warn('⚠️ Блок: пустые данные');return}
+fbSyncInProgress=true;setSt('syncing','Сохранение...');
+try{await docRef().set({data:JSON.stringify(appData),lastSync:firebase.firestore.FieldValue.serverTimestamp(),updatedBy:userName,appVersion:'3.0',mode:'shared',users:firebase.firestore.FieldValue.arrayUnion(userName)},{merge:true});setSt('online','Сохранено')}
+catch(e){setSt('offline','Ошибка');toast('Ошибка: '+(e.code||e.message),'error')}
+finally{fbSyncInProgress=false}}
+
+// Ошибка 8: флаг _fbLR против двойного вызова
+async function loadFB(){if(window._fbLR)return;window._fbLR=true;if(!fbEnabled){window._fbLR=false;return}
+fbSyncInProgress=true;setSt('syncing','Загрузка...');
+try{const doc=await docRef().get();
+// Ошибка 10: сначала проверяем что данные есть, потом заменяем
+if(doc.exists&&doc.data().data){appData=JSON.parse(doc.data().data);saveLocal();render();setSt('online','Загружено');if(doc.data().users)showUsers(doc.data().users)}
+else{loadLocal();setSt('online','Новая комната')}}
+catch(e){loadLocal();setSt('offline','Офлайн')}
+finally{fbSyncInProgress=false;window._fbLR=false}startSync()}
+
+function startSync(){if(!fbEnabled)return;if(fbUnsubscribe)fbUnsubscribe();
+fbUnsubscribe=docRef().onSnapshot(doc=>{if(!doc.exists||fbSyncInProgress)return;const d=doc.data();if(d.updatedBy===userName)return;
+try{appData=JSON.parse(d.data);saveLocal();render();toast(d.updatedBy+' обновил(а) данные','success');if(d.users)showUsers(d.users)}catch(e){}},e=>{})}
+
+// ═══ LOCAL STORAGE ═══
+function saveLocal(){localStorage.setItem(APP_NAME+'_'+roomCode,JSON.stringify(appData))}
+function loadLocal(){const s=localStorage.getItem(APP_NAME+'_'+roomCode);if(s)try{appData=JSON.parse(s)}catch(e){}}
+function save(){saveLocal();if(fbEnabled)saveFB()}
+
+// ═══ UI HELPERS ═══
+function setSt(s,t){const d=$('statusDot'),l=$('statusText');if(d)d.className='status-dot '+s;if(l)l.textContent=t}
+function showUsers(users){if(!users||!users.length){$('usersBar').classList.add('hidden');return}$('usersBar').classList.remove('hidden');$('usersBar').innerHTML=users.map(u=>`<span class="user-badge ${u===userName?'me':''}"><span class="dot"></span>${FAMILY_EMOJI[u]||'👤'} ${u}</span>`).join('')}
+function modal(c){$('modalContent').innerHTML=`<div class="modal-handle"></div><div class="modal-header"><span class="modal-title">${c.title||''}</span><button class="modal-close" onclick="closeModal()">Готово</button></div><div class="modal-body">${c.body||''}</div>`;$('modalOverlay').classList.add('active')}
+function closeModal(){$('modalOverlay').classList.remove('active')}
+function toast(m,type){$('toast').textContent=m;$('toast').className='toast '+(type||'info')+' show';setTimeout(()=>$('toast').classList.remove('show'),3000)}
+function setHeader(title,back,action){$('headerTitle').textContent=title;$('headerBack').classList.toggle('hidden',!back);if(action){$('headerAction').textContent=action.text;$('headerAction').onclick=action.onClick;$('headerAction').classList.remove('hidden')}else{$('headerAction').classList.add('hidden')}}
+function setFab(items){$('fabMenu').innerHTML=items.map(i=>`<div class="fab-item"><span class="fab-item-label">${i.label}</span><button class="fab-item-btn" onclick="App.closeFab();${i.action}">${i.icon}</button></div>`).join('')}
+function render(){if(currentView==='trips')renderTrips();else if(currentView==='tripDetail')renderTripDetail()}
+
+// ═══ CHIPS (выбор участников) ═══
+function participantChips(selected){return'<div class="form-group"><label class="form-label">Участники</label><div class="chip-group" id="participantChips">'+FAMILY.map(name=>`<button type="button" class="chip ${(selected||FAMILY).includes(name)?'selected':''}" onclick="toggleChip(this,'${name}')">${FAMILY_EMOJI[name]} ${name}</button>`).join('')+'</div></div>'}
+function toggleChip(btn,name){btn.classList.toggle('selected')}
+function getSelectedParticipants(){return Array.from(document.querySelectorAll('#participantChips .chip.selected')).map(c=>c.textContent.trim().split(' ').pop())}
+
+// ═══ TRIPS LIST ═══
+function renderTrips(){currentView='trips';currentTripId=null;setHeader('Поездки');setFab([{label:'Новая поездка',icon:'✈️',action:'App.addTrip()'},{label:'Импорт JSON',icon:'📥',action:'App.importData()'},{label:'Настройки',icon:'⚙️',action:'App.settings()'}]);$('fabContainer').classList.remove('hidden');
+const trips=appData.trips||[];if(!trips.length){$('mainContent').innerHTML='<div class="empty-state"><div class="empty-icon">🧳</div><div class="empty-title">Нет поездок</div><div class="empty-text">Нажмите + чтобы спланировать путешествие</div></div>';return}
+const today=new Date().toISOString().split('T')[0];const cur=trips.filter(t=>t.startDate<=today&&t.endDate>=today);const up=trips.filter(t=>t.startDate>today).sort((a,b)=>a.startDate.localeCompare(b.startDate));const past=trips.filter(t=>t.endDate<today).sort((a,b)=>b.startDate.localeCompare(a.startDate));let h='';
+if(cur.length)h+='<div class="section-subheader">✈️ Сейчас</div>'+cur.map(t=>tripCard(t,'current')).join('');
+if(up.length)h+='<div class="section-subheader">Предстоящие</div>'+up.map(t=>tripCard(t,'upcoming')).join('');
+if(past.length)h+='<div class="section-subheader">Прошлые</div>'+past.map(t=>tripCard(t,'past')).join('');
+$('mainContent').innerHTML=h}
+
+function tripCard(t,st){const labels={current:'В поездке',upcoming:'Скоро',past:'Завершена'};const gs=['linear-gradient(135deg,#667eea,#764ba2)','linear-gradient(135deg,#f093fb,#f5576c)','linear-gradient(135deg,#4facfe,#00f2fe)','linear-gradient(135deg,#43e97b,#38f9d7)','linear-gradient(135deg,#fa709a,#fee140)'];const g=gs[t.title.length%gs.length];const e=tripEmoji(t.title);
+const img=t.cover?`<div class="trip-card-image" style="background-image:url('${t.cover}');background-size:cover;background-position:center"></div>`:`<div class="trip-card-image" style="background:${g}"><span style="font-size:56px;filter:drop-shadow(0 2px 4px rgba(0,0,0,.2))">${e}</span></div>`;
+const pp=t.participants&&t.participants.length<4?`<span class="trip-card-participants">${t.participants.map(n=>FAMILY_EMOJI[n]||'').join(' ')}</span>`:'';
+return`<div class="trip-card" onclick="App.openTrip('${t.id}')">${img}<div class="trip-card-content"><div class="trip-card-title">${t.title}</div><div class="trip-card-dates">${fmtRange(t.startDate,t.endDate)}</div><div class="trip-card-meta"><span class="trip-card-status ${st}">${labels[st]}</span>${pp}</div></div></div>`}
+
+// ═══ ADD TRIP ═══
+function addTripModal(){modal({title:'Новая поездка',body:`<div class="cover-picker" id="coverPicker" onclick="App.pickCover()"><span class="cover-picker-icon">📷</span><span class="cover-picker-text">Добавить обложку</span></div><input type="hidden" id="tripCover"><div class="form-group"><label class="form-label">Название</label><input type="text" class="input" id="tripTitle" placeholder="Например: Стамбул 2026"></div><div class="form-group"><label class="form-label">Дата начала</label><input type="date" class="input" id="tripStart"></div><div class="form-group"><label class="form-label">Дата окончания</label><input type="date" class="input" id="tripEnd"></div>${participantChips(FAMILY)}<div class="form-group"><label class="form-label">Описание</label><textarea class="input" id="tripDesc" placeholder="Краткое описание..."></textarea></div><button class="btn btn-primary" onclick="App.saveTrip()">Создать</button>`})}
+function saveTrip(){const t=$('tripTitle').value.trim(),s=$('tripStart').value,e=$('tripEnd').value,d=$('tripDesc').value.trim(),c=$('tripCover').value,pp=getSelectedParticipants();if(!t){toast('Введите название','error');return}if(!s||!e){toast('Укажите даты','error');return}if(!pp.length){toast('Выберите участников','error');return}if(!appData.trips)appData.trips=[];appData.trips.push({id:gid(),title:t,startDate:s,endDate:e,description:d,cover:c||null,participants:pp,createdBy:userName,created:new Date().toISOString()});save();closeModal();toast('✈️ Создано!','success');renderTrips()}
+
+// ═══ TRIP DETAIL ═══
+function openTrip(id){const t=(appData.trips||[]).find(x=>x.id===id);if(!t)return;currentView='tripDetail';currentTripId=id;currentTab='schedule';setHeader(t.title,true,{text:'···',onClick:()=>App.tripMenu()});renderTripDetail()}
+function curTrip(){return(appData.trips||[]).find(t=>t.id===currentTripId)}
+function renderTripDetail(){const trip=curTrip();if(!trip){renderTrips();return}fabForTab();
+const tabs=`<div class="tab-bar"><button class="tab-item ${currentTab==='schedule'?'active':''}" onclick="App.tab('schedule')">📅 Расписание</button><button class="tab-item ${currentTab==='links'?'active':''}" onclick="App.tab('links')">🔗 Ссылки</button><button class="tab-item ${currentTab==='notes'?'active':''}" onclick="App.tab('notes')">📝 Заметки</button><button class="tab-item ${currentTab==='photos'?'active':''}" onclick="App.tab('photos')">📷 Фото</button></div>`;
+let c='';switch(currentTab){case'schedule':c=scheduleTab();break;case'links':c=linksTab();break;case'notes':c=notesTab();break;case'photos':c=photosTab();break}
+$('mainContent').innerHTML=tabs+'<div style="padding:16px">'+c+'</div>'}
+
+function fabForTab(){const items=[];switch(currentTab){case'schedule':items.push({label:'Добавить событие',icon:'📅',action:'App.addEvent()'});break;case'links':items.push({label:'Google Maps',icon:'🗺️',action:"App.addLink('map')"},{label:'Яндекс Карты',icon:'📍',action:"App.addLink('yandex')"},{label:'Instagram',icon:'📸',action:"App.addLink('instagram')"},{label:'Сайт',icon:'🌐',action:"App.addLink('web')"});break;case'notes':items.push({label:'Добавить заметку',icon:'📝',action:'App.addNote()'});break;case'photos':items.push({label:'Добавить фото',icon:'📷',action:'App.addPhoto()'});break}items.push({label:'Экспорт',icon:'📤',action:'App.expTrip()'});setFab(items)}
+
+// ═══ SCHEDULE TAB ═══
+function scheduleTab(){const ev=(appData.events||[]).filter(e=>e.tripId===currentTripId);if(!ev.length)return'<div class="empty-state"><div class="empty-icon">📅</div><div class="empty-title">Нет событий</div><div class="empty-text">Добавьте мероприятия в расписание</div></div>';
+const gr={};ev.forEach(e=>{if(!gr[e.date])gr[e.date]=[];gr[e.date].push(e)});let h='';
+Object.keys(gr).sort().forEach(date=>{const de=gr[date].sort((a,b)=>(a.time||'').localeCompare(b.time||'')),d=new Date(date);
+h+=`<div class="day-header"><div class="day-date"><span class="day-date-num">${d.getDate()}</span><span class="day-date-month">${monShort(d.getMonth())}</span></div><div><div class="day-title">${weekday(d)}</div><div class="day-weekday">${fmtDate(date)}</div></div></div><div class="list">`;
+h+=de.map(e=>`<div class="event-item" onclick="App.eventDetail('${e.id}')"><span class="event-time">${e.time||''}</span><div class="event-content"><div class="event-title">${e.title}${e.link?' 🔗':''}${e.photo?' 📷':''}</div>${e.note?`<div class="event-note">${e.note}</div>`:''}${e.createdBy?`<div class="event-author">${FAMILY_EMOJI[e.createdBy]||''} ${e.createdBy}</div>`:''}</div></div>`).join('');h+='</div>'});return h}
+
+function addEventModal(){const trip=curTrip();modal({title:'Новое событие',body:`<div class="form-group"><label class="form-label">Дата</label><input type="date" class="input" id="evDate" min="${trip.startDate}" max="${trip.endDate}" value="${trip.startDate}"></div><div class="form-group"><label class="form-label">Время</label><input type="time" class="input" id="evTime" value="10:00"></div><div class="form-group"><label class="form-label">Название</label><input type="text" class="input" id="evTitle" placeholder="Например: Завтрак в отеле"></div><div class="form-group"><label class="form-label">Заметка</label><textarea class="input" id="evNote" placeholder="Дополнительно..."></textarea></div><div class="form-group"><label class="form-label">Ссылка</label><input type="url" class="input" id="evLink" placeholder="https://..."></div><div class="form-group"><label class="form-label">Фото</label><div class="photo-picker" id="evPhotoPicker" onclick="pickFile('evPhoto','evPhotoPicker')"><span style="font-size:24px;color:var(--text3)">📷 Добавить</span></div><input type="hidden" id="evPhoto"></div><button class="btn btn-primary" onclick="App.saveEvent()">Добавить</button>`})}
+function saveEvent(){const d=$('evDate').value,tm=$('evTime').value,t=$('evTitle').value.trim(),n=$('evNote').value.trim(),l=$('evLink').value.trim(),p=$('evPhoto').value;if(!d||!t){toast('Заполните дату и название','error');return}if(!appData.events)appData.events=[];appData.events.push({id:gid(),tripId:currentTripId,date:d,time:tm,title:t,note:n,link:l||null,photo:p||null,createdBy:userName});save();closeModal();toast('📅 Добавлено','success');renderTripDetail()}
+function eventDetail(eid){const e=(appData.events||[]).find(x=>x.id===eid);if(!e)return;let ph=e.photo?`<img src="${e.photo}" style="width:100%;border-radius:12px;margin-bottom:16px">`:'';let lh='';if(e.link){const ic=e.link.includes('yandex')?'📍':e.link.includes('google')?'🗺️':'🔗';lh=`<a href="${e.link}" target="_blank" class="btn btn-secondary mb-16" style="text-decoration:none">${ic} Открыть ссылку</a>`}
+modal({title:e.title,body:`${ph}<div class="description-block"><p><strong>Дата:</strong> ${fmtDate(e.date)}</p><p><strong>Время:</strong> ${e.time||'—'}</p>${e.note?`<p style="margin-top:12px">${e.note}</p>`:''}${e.createdBy?`<p style="margin-top:8px;font-size:12px;color:var(--text3)">${FAMILY_EMOJI[e.createdBy]||''} ${e.createdBy}</p>`:''}</div>${lh}<button class="btn btn-danger" onclick="App.delEvent('${eid}')">Удалить</button>`})}
+function delEvent(id){if(!confirm('Удалить событие?'))return;appData.events=(appData.events||[]).filter(e=>e.id!==id);save();closeModal();toast('🗑️ Удалено','success');renderTripDetail()}
+
+// ═══ LINKS TAB ═══
+function linksTab(){const links=(appData.links||[]).filter(l=>l.tripId===currentTripId);if(!links.length)return'<div class="empty-state"><div class="empty-icon">🔗</div><div class="empty-title">Нет ссылок</div><div class="empty-text">Сохраняйте полезные ссылки</div></div>';
+const types={map:{items:[],label:'🗺️ Google Maps'},yandex:{items:[],label:'📍 Яндекс Карты'},instagram:{items:[],label:'📸 Instagram'},web:{items:[],label:'🌐 Сайты'}};links.forEach(l=>{if(types[l.type])types[l.type].items.push(l)});
+const icons={map:'🗺️',yandex:'📍',instagram:'📸',web:'🌐'};const ics={map:'map',yandex:'map',instagram:'instagram',web:'web'};let h='';
+for(const[type,data]of Object.entries(types)){if(!data.items.length)continue;h+=`<div class="section-subheader">${data.label}</div><div class="list">`;h+=data.items.map(l=>`<div class="list-item" onclick="App.openLink('${l.id}')"><div class="list-item-icon ${ics[type]}">${icons[type]}</div><div class="list-item-content"><div class="list-item-title">${l.title}</div><div class="list-item-subtitle">${domain(l.url)}${l.createdBy?' · '+l.createdBy:''}</div></div><span class="list-item-arrow">›</span></div>`).join('');h+='</div>'}return h}
+function addLinkModal(type){const titles={map:'Google Maps',yandex:'Яндекс Карты',instagram:'Instagram',web:'Сайт'};const ph={map:'https://maps.google.com/...',yandex:'https://yandex.ru/maps/...',instagram:'https://instagram.com/...',web:'https://example.com'};
+modal({title:'Добавить: '+titles[type],body:`<input type="hidden" id="linkType" value="${type}"><div class="form-group"><label class="form-label">Название</label><input type="text" class="input" id="linkTitle" placeholder="Например: Ресторан"></div><div class="form-group"><label class="form-label">URL</label><input type="url" class="input" id="linkUrl" placeholder="${ph[type]}"></div><div class="form-group"><label class="form-label">Описание</label><textarea class="input" id="linkDesc" placeholder="Заметка..."></textarea></div><button class="btn btn-primary" onclick="App.saveLink()">Сохранить</button>`})}
+function saveLink(){const type=$('linkType').value,t=$('linkTitle').value.trim(),u=$('linkUrl').value.trim(),d=$('linkDesc').value.trim();if(!t||!u){toast('Заполните поля','error');return}if(!appData.links)appData.links=[];appData.links.push({id:gid(),tripId:currentTripId,type,title:t,url:u,description:d,createdBy:userName});save();closeModal();toast('🔗 Сохранено','success');renderTripDetail()}
+function openLinkModal(lid){const l=(appData.links||[]).find(x=>x.id===lid);if(!l)return;modal({title:l.title,body:`${l.description?`<div class="description-block"><p class="description-text">${l.description}</p></div>`:''}${l.createdBy?`<p style="font-size:12px;color:var(--text3);margin-bottom:12px">${FAMILY_EMOJI[l.createdBy]||''} ${l.createdBy}</p>`:''}<a href="${l.url}" target="_blank" class="btn btn-primary mb-16" style="text-decoration:none">Открыть ↗</a><button class="btn btn-danger" onclick="App.delLink('${lid}')">Удалить</button>`})}
+function delLink(id){appData.links=(appData.links||[]).filter(l=>l.id!==id);save();closeModal();toast('🗑️ Удалено','success');renderTripDetail()}
+
+// ═══ NOTES TAB ═══
+function notesTab(){const notes=(appData.notes||[]).filter(n=>n.tripId===currentTripId);if(!notes.length)return'<div class="empty-state"><div class="empty-icon">📝</div><div class="empty-title">Нет заметок</div><div class="empty-text">Записывайте важную информацию</div></div>';
+return'<div class="list">'+notes.map(n=>`<div class="list-item" onclick="App.noteDetail('${n.id}')"><div class="list-item-icon note">📝</div><div class="list-item-content"><div class="list-item-title">${n.title}</div><div class="list-item-subtitle">${FAMILY_EMOJI[n.createdBy]||''} ${n.createdBy||''} · ${fmtDate((n.created||'').split('T')[0])}</div></div><span class="list-item-arrow">›</span></div>`).join('')+'</div>'}
+function addNoteModal(){modal({title:'Новая заметка',body:`<div class="form-group"><label class="form-label">Заголовок</label><input type="text" class="input" id="noteTitle" placeholder="Название"></div><div class="form-group"><label class="form-label">Текст</label><textarea class="input" id="noteText" rows="6" placeholder="Содержание..."></textarea></div><button class="btn btn-primary" onclick="App.saveNote()">Сохранить</button>`})}
+function saveNote(){const t=$('noteTitle').value.trim(),x=$('noteText').value.trim();if(!t||!x){toast('Заполните поля','error');return}if(!appData.notes)appData.notes=[];appData.notes.push({id:gid(),tripId:currentTripId,title:t,text:x,createdBy:userName,created:new Date().toISOString()});save();closeModal();toast('📝 Сохранено','success');renderTripDetail()}
+function noteDetail(nid){const n=(appData.notes||[]).find(x=>x.id===nid);if(!n)return;modal({title:n.title,body:`<div class="description-block"><p class="description-text">${n.text}</p></div><p style="font-size:13px;color:var(--text2);margin-bottom:12px">${FAMILY_EMOJI[n.createdBy]||''} ${n.createdBy||''} · ${fmtDT(n.created)}</p><button class="btn btn-secondary mb-16" onclick="App.editNote('${nid}')">✏️ Редактировать</button><button class="btn btn-danger" onclick="App.delNote('${nid}')">Удалить</button>`})}
+function editNoteModal(nid){const n=(appData.notes||[]).find(x=>x.id===nid);if(!n)return;modal({title:'Редактировать',body:`<input type="hidden" id="editNoteId" value="${nid}"><div class="form-group"><label class="form-label">Заголовок</label><input type="text" class="input" id="editNoteTitle" value="${n.title}"></div><div class="form-group"><label class="form-label">Текст</label><textarea class="input" id="editNoteText" style="min-height:150px">${n.text}</textarea></div><button class="btn btn-primary" onclick="App.updateNote()">Сохранить</button>`})}
+function updateNote(){const id=$('editNoteId').value,i=(appData.notes||[]).findIndex(n=>n.id===id);if(i===-1)return;appData.notes[i].title=$('editNoteTitle').value.trim();appData.notes[i].text=$('editNoteText').value.trim();appData.notes[i].updatedBy=userName;if(!appData.notes[i].title||!appData.notes[i].text){toast('Заполните поля','error');return}save();closeModal();toast('✅ Обновлено','success');renderTripDetail()}
+function delNote(id){if(!confirm('Удалить?'))return;appData.notes=(appData.notes||[]).filter(n=>n.id!==id);save();closeModal();toast('🗑️ Удалено','success');renderTripDetail()}
+
+// ═══ PHOTOS TAB ═══
+function photosTab(){const photos=(appData.photos||[]).filter(p=>p.tripId===currentTripId);if(!photos.length)return'<div class="empty-state"><div class="empty-icon">📷</div><div class="empty-title">Нет фото</div><div class="empty-text">Добавляйте фотографии</div></div>';
+return'<div class="photo-grid">'+photos.map(p=>`<div class="photo-item" onclick="App.photoDetail('${p.id}')"><img src="${p.data}" alt=""></div>`).join('')+'</div>'}
+function addPhoto(){const input=document.createElement('input');input.type='file';input.accept='image/*';input.multiple=true;input.onchange=async e=>{const files=Array.from(e.target.files);if(!appData.photos)appData.photos=[];for(const fi of files){const b=await toB64(fi);appData.photos.push({id:gid(),tripId:currentTripId,data:b,createdBy:userName,created:new Date().toISOString()})}save();toast('📷 Добавлено: '+files.length,'success');renderTripDetail()};input.click()}
+function photoDetail(pid){const p=(appData.photos||[]).find(x=>x.id===pid);if(!p)return;modal({title:'Фото',body:`<img src="${p.data}" style="width:100%;border-radius:12px;margin-bottom:16px">${p.createdBy?`<p style="font-size:12px;color:var(--text3);margin-bottom:12px">${FAMILY_EMOJI[p.createdBy]||''} ${p.createdBy}</p>`:''}<button class="btn btn-danger" onclick="App.delPhoto('${pid}')">Удалить</button>`})}
+function delPhoto(id){appData.photos=(appData.photos||[]).filter(p=>p.id!==id);save();closeModal();toast('🗑️ Удалено','success');renderTripDetail()}
+
+// ═══ TRIP MENU / EDIT / DELETE ═══
+function tripMenu(){modal({title:'Действия',body:`<div class="list"><div class="list-item" onclick="App.editTrip()"><div class="list-item-icon" style="background:#e3f2fd">✏️</div><div class="list-item-content"><div class="list-item-title">Редактировать</div></div></div><div class="list-item" onclick="App.expTrip()"><div class="list-item-icon" style="background:#e8f5e9">📤</div><div class="list-item-content"><div class="list-item-title">Экспорт JSON</div></div></div><div class="list-item" onclick="App.delTrip()"><div class="list-item-icon" style="background:#ffebee">🗑️</div><div class="list-item-content"><div class="list-item-title" style="color:var(--danger)">Удалить</div></div></div></div>`})}
+function editTripModal(){const t=curTrip();if(!t)return;modal({title:'Редактировать',body:`<div class="cover-picker" id="coverPicker" onclick="App.pickCover()">${t.cover?`<img src="${t.cover}"><div class="cover-picker-overlay"><span class="cover-picker-icon">📷</span><span class="cover-picker-text">Изменить</span></div>`:'<span class="cover-picker-icon">📷</span><span class="cover-picker-text">Обложка</span>'}</div><input type="hidden" id="tripCover" value="${t.cover||''}"><div class="form-group"><label class="form-label">Название</label><input type="text" class="input" id="tripTitle" value="${t.title}"></div><div class="form-group"><label class="form-label">Начало</label><input type="date" class="input" id="tripStart" value="${t.startDate}"></div><div class="form-group"><label class="form-label">Конец</label><input type="date" class="input" id="tripEnd" value="${t.endDate}"></div>${participantChips(t.participants)}<div class="form-group"><label class="form-label">Описание</label><textarea class="input" id="tripDesc">${t.description||''}</textarea></div><button class="btn btn-primary" onclick="App.updateTrip()">Сохранить</button>`})}
+function updateTrip(){const i=(appData.trips||[]).findIndex(t=>t.id===currentTripId);if(i===-1)return;const pp=getSelectedParticipants();if(!pp.length){toast('Выберите участников','error');return}appData.trips[i].title=$('tripTitle').value.trim();appData.trips[i].startDate=$('tripStart').value;appData.trips[i].endDate=$('tripEnd').value;appData.trips[i].description=$('tripDesc').value.trim();appData.trips[i].cover=$('tripCover').value||null;appData.trips[i].participants=pp;appData.trips[i].updatedBy=userName;save();closeModal();toast('✅ Сохранено','success');setHeader(appData.trips[i].title,true,{text:'···',onClick:()=>App.tripMenu()})}
+function deleteTrip(){if(!confirm('Удалить поездку и все данные?'))return;appData.trips=(appData.trips||[]).filter(t=>t.id!==currentTripId);appData.events=(appData.events||[]).filter(e=>e.tripId!==currentTripId);appData.links=(appData.links||[]).filter(l=>l.tripId!==currentTripId);appData.notes=(appData.notes||[]).filter(n=>n.tripId!==currentTripId);appData.photos=(appData.photos||[]).filter(p=>p.tripId!==currentTripId);save();closeModal();toast('🗑️ Удалено','success');renderTrips()}
+
+// ═══ FILE PICKERS ═══
+function pickFile(inputId,pickerId){const input=document.createElement('input');input.type='file';input.accept='image/*';input.onchange=async e=>{const fi=e.target.files[0];if(!fi)return;const b=await toB64(fi);$(inputId).value=b;$(pickerId).innerHTML=`<img src="${b}" style="width:100%;height:100%;object-fit:cover;border-radius:10px">`};input.click()}
+function pickCover(){const input=document.createElement('input');input.type='file';input.accept='image/*';input.onchange=async e=>{const fi=e.target.files[0];if(!fi)return;const b=await toB64(fi);$('tripCover').value=b;$('coverPicker').innerHTML=`<img src="${b}"><div class="cover-picker-overlay"><span class="cover-picker-icon">📷</span><span class="cover-picker-text">Изменить</span></div>`};input.click()}
+
+// ═══ EXPORT / IMPORT ═══
+function expTrip(){const trip=curTrip();if(!trip)return;const data={version:'3.0',exportDate:new Date().toISOString(),exportedBy:userName,trip:trip,events:(appData.events||[]).filter(e=>e.tripId===currentTripId),links:(appData.links||[]).filter(l=>l.tripId===currentTripId),notes:(appData.notes||[]).filter(n=>n.tripId===currentTripId),photos:(appData.photos||[]).filter(p=>p.tripId===currentTripId)};dl(JSON.stringify(data,null,2),'trip_'+trip.title.replace(/\s+/g,'_')+'.json');toast('📤 Экспортировано','success')}
+function importData(){const input=document.createElement('input');input.type='file';input.accept='.json';input.onchange=async e=>{const file=e.target.files[0];if(!file)return;try{const text=await file.text();const data=JSON.parse(text);if(data.data){appData=data.data;save();toast('📥 Бэкап восстановлен','success');renderTrips();return}if(data.trip){const nid=gid();data.trip.id=nid;if(!appData.trips)appData.trips=[];appData.trips.push(data.trip);for(const e of(data.events||[])){e.id=gid();e.tripId=nid;if(!appData.events)appData.events=[];appData.events.push(e)}for(const l of(data.links||[])){l.id=gid();l.tripId=nid;if(!appData.links)appData.links=[];appData.links.push(l)}for(const n of(data.notes||[])){n.id=gid();n.tripId=nid;if(!appData.notes)appData.notes=[];appData.notes.push(n)}for(const p of(data.photos||[])){p.id=gid();p.tripId=nid;if(!appData.photos)appData.photos=[];appData.photos.push(p)}save();toast('📥 Импортировано','success');renderTrips()}}catch(err){toast('❌ Ошибка','error')}};input.click()}
+function dl(str,fn){const blob=new Blob([str],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=fn;a.click();URL.revokeObjectURL(url)}
+
+// ═══ SETTINGS ═══
+function settingsModal(){modal({title:'Настройки',body:`<div class="description-block"><p><strong>Пользователь:</strong> ${FAMILY_EMOJI[userName]||''} ${userName}</p><p><strong>Комната:</strong> ${roomCode}</p><p><strong>Firebase:</strong> ${fbEnabled?'✅ Подключен':'❌ Нет'}</p><p><strong>Версия:</strong> 3.0</p></div><button class="btn btn-secondary mb-16" onclick="App.cloudLoad()">⬇️ Загрузить из облака</button><button class="btn btn-secondary mb-16" onclick="App.cloudSave()">☁️ Отправить в облако</button><button class="btn btn-secondary mb-16" onclick="App.expAll()">💾 Экспорт всех данных</button><button class="btn btn-danger" onclick="App.logout()">Выйти</button>`})}
+async function cloudLoad(){if(!fbEnabled){toast('Firebase не подключен','error');return}if(!confirm('Загрузить? Локальные данные перезапишутся.'))return;closeModal();setSt('syncing','Загрузка...');try{const doc=await docRef().get();if(doc.exists&&doc.data().data){appData=JSON.parse(doc.data().data);saveLocal();render();setSt('online','Загружено');toast('☁️ Загружено!','success')}else{toast('В облаке пусто','error')}}catch(e){toast('Ошибка','error')}}
+async function cloudSave(){if(!fbEnabled){toast('Firebase не подключен','error');return}fbSyncInProgress=false;await saveFB();toast('☁️ Отправлено!','success')}
+function expAll(){dl(JSON.stringify({version:'3.0',exportDate:new Date().toISOString(),exportedBy:userName,room:roomCode,data:appData},null,2),'tripplanner_'+new Date().toISOString().split('T')[0]+'.json');toast('📤 Экспорт','success')}
+function logout(){if(!confirm('Выйти?'))return;if(fbUnsubscribe)fbUnsubscribe();localStorage.removeItem(APP_NAME+'_user');localStorage.removeItem(APP_NAME+'_room');localStorage.removeItem(APP_NAME+'_pin');location.reload()}
+
+// ═══ APP OBJECT ═══
+const App={
+goBack(){if(currentView==='tripDetail')renderTrips()},
+toggleFab(){fabOpen?this.closeFab():this.openFab()},
+openFab(){fabOpen=true;$('fabBtn').classList.add('open');$('fabMenu').classList.add('open')},
+closeFab(){fabOpen=false;$('fabBtn').classList.remove('open');$('fabMenu').classList.remove('open')},
+addTrip:addTripModal,saveTrip,openTrip,editTrip:editTripModal,updateTrip,delTrip:deleteTrip,pickCover,
+tab(t){currentTab=t;renderTripDetail()},
+addEvent:addEventModal,saveEvent,eventDetail,delEvent,
+addLink:addLinkModal,saveLink,openLink:openLinkModal,delLink,
+addNote:addNoteModal,saveNote,noteDetail,editNote:editNoteModal,updateNote,delNote,
+addPhoto,photoDetail,delPhoto,
+tripMenu,expTrip,importData,
+settings:settingsModal,cloudLoad,cloudSave,expAll,logout
+};
+window.App=App;
+
+// ═══ INIT ═══
+$('modalOverlay').addEventListener('click',e=>{if(e.target.id==='modalOverlay')closeModal()});
+document.addEventListener('click',e=>{if(fabOpen&&!$('fabContainer').contains(e.target))App.closeFab()});
+if(!tryAuto())console.log('🧳 Trip Planner v3: ожидание PIN...');
+
+</script>
+</body>
+</html>
